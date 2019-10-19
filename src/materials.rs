@@ -62,54 +62,6 @@ pub struct GlassMaterial {
     pub ref_idx: f32,
 }
 
-// impl Material for GlassMaterial {
-//     fn scatter(&self, ray: &Ray, hit_record: &HitRecord, rng: &mut ThreadRng) -> (Ray, Vec3) {
-//         let outward_normal: Vec3;
-//         let ni_over_nt: f32;
-//         let cosine: f32;
-
-//         if ray.dir.dot(hit_record.normal) > 0.0 {
-//             outward_normal = -hit_record.normal;
-//             ni_over_nt = self.ref_idx;
-//             cosine = self.ref_idx * ray.dir.dot(hit_record.normal) / ray.dir.length();
-//         } else {
-//             outward_normal = hit_record.normal;
-//             ni_over_nt = 1.0 / self.ref_idx;
-//             cosine = -ray.dir.dot(hit_record.normal) / ray.dir.length();
-//         }
-
-//         match refract(&ray.dir, &outward_normal, ni_over_nt) {
-//             Some(refracted) => {
-//                 if rng.gen::<f32>() > schlick(cosine, self.ref_idx) {
-//                     return (
-//                         Ray {
-//                             pos: ray.point_at_t(hit_record.t),
-//                             dir: refracted,
-//                         },
-//                         self.albedo,
-//                     );
-//                 }
-//             }
-//             None => {}
-//         }
-
-//         // return (
-//         //     Ray {
-//         //         pos: ray.point_at_t(hit_record.t),
-//         //         dir: reflect(&ray.dir /*.normalized()*/, &hit_record.normal),
-//         //     },
-//         //     self.albedo,
-//         // );
-//         return (
-//             Ray {
-//                 pos: ray.point_at_t(hit_record.t),
-//                 dir: Vec3(0.0, 1.0, 0.0),
-//             },
-//             Vec3(0.0, 0.0, 0.0),
-//         );
-//     }
-// }
-
 impl Material for GlassMaterial {
     fn scatter(&self, ray: &Ray, hit_record: &HitRecord, rng: &mut ThreadRng) -> (Ray, Vec3) {
         let outward_normal: Vec3;
@@ -126,9 +78,10 @@ impl Material for GlassMaterial {
             cosine = -ray.dir.dot(hit_record.normal) / ray.dir.length();
         }
 
-        match refract(&ray.dir, &outward_normal, ni_over_nt) {
-            Some(refraction) => {
-                if rng.gen::<f32>() > schlick(cosine, self.ref_idx) {
+        if rng.gen::<f32>() > schlick(cosine, self.ref_idx) {
+            // borrowed this code from https://github.com/perliedman/raytracing-in-one-weekend/blob/master/src/material.rs
+            match refract(&ray.dir, &outward_normal, ni_over_nt) {
+                Some(refraction) => {
                     return (
                         Ray {
                             pos: ray.point_at_t(hit_record.t),
@@ -137,24 +90,26 @@ impl Material for GlassMaterial {
                         self.albedo,
                     );
                 }
+                None => {}
             }
-            None => {}
         }
 
-        return (
+        (
             Ray {
-                pos: ray.point_at_t(hit_record.t + 0.001),
+                pos: ray.point_at_t(hit_record.t),
                 dir: reflect(&ray.dir.normalized(), &hit_record.normal),
             },
             self.albedo,
-        );
+        )
     }
 }
 
+// borrowed this code from https://github.com/perliedman/raytracing-in-one-weekend/blob/master/src/material.rs
 fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
     *v - 2.0 * v.dot(*n) * *n
 }
 
+// borrowed this code from https://github.com/perliedman/raytracing-in-one-weekend/blob/master/src/material.rs
 fn refract(v: &Vec3, n: &Vec3, ni_over_nt: f32) -> Option<Vec3> {
     let uv = v.normalized();
     let dt = uv.dot(*n);
@@ -166,6 +121,7 @@ fn refract(v: &Vec3, n: &Vec3, ni_over_nt: f32) -> Option<Vec3> {
     }
 }
 
+// borrowed this code from https://github.com/perliedman/raytracing-in-one-weekend/blob/master/src/material.rs
 fn schlick(cosine: f32, ref_idx: f32) -> f32 {
     let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
     let r0sq = r0 * r0;

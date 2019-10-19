@@ -115,8 +115,8 @@ fn build_world(rng: &mut ThreadRng) -> HittableList {
 }
 
 fn main() -> std::io::Result<()> {
-    let width: usize = 800;
-    let height: usize = 600;
+    let width: usize = 400;
+    let height: usize = 300;
     let rays_per_pixel: usize = 1000;
     let mut rng = rand::thread_rng();
     let mut data: Vec<u8> = Vec::with_capacity(width * height * 4);
