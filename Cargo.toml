@@ -1,0 +1,15 @@
+[package]
+name = "raytracer"
+version = "0.0.1"
+authors = ["Me"]
+autobins = true
+edition = "2018"
+default-run = "raytracer"
+
+[dependencies]
+mtpng = "0.3.1"
+approx = "0.3.2"
+rand = "0.7.2"
+
+[[bin]]
+name = "image_out_example"
