@@ -4,7 +4,8 @@ use rand::Rng;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
-// use std::time::Instant;
+use std::sync::Arc;
+use std::thread;
 
 mod camera;
 mod hittable;
@@ -33,7 +34,6 @@ fn color(world: &HittableList, ray: &Ray, rng: &mut ThreadRng, depth: u8) -> Vec
     let unit_dir = ray.dir.normalized();
     let a = 0.5 * (unit_dir.y() + 1.0);
     (1.0 - a) * Vec3(1.0, 1.0, 1.0) + (a) * Vec3(0.5, 0.7, 1.0)
-    // Vec3(1.0, 1.0, 1.0)
 }
 
 fn clamp_to_u8(val: f32) -> u8 {
@@ -93,7 +93,7 @@ fn build_world(rng: &mut ThreadRng) -> HittableList {
                 && (center - Vec3(0.0, 0.0, 0.0)).squared_length() > 0.25
                 && (center - Vec3(1.0, 0.0, 0.0)).squared_length() > 0.25
             {
-                let material: Box<dyn Material> = if rng.gen::<f32>() > 0.5 {
+                let material: Box<dyn Material + Send + Sync> = if rng.gen::<f32>() > 0.5 {
                     Box::new(MetalMaterial {
                         albedo: Vec3(rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>()),
                         fuzz: rng.gen::<f32>(),
@@ -114,62 +114,68 @@ fn build_world(rng: &mut ThreadRng) -> HittableList {
     world
 }
 
-fn main() -> std::io::Result<()> {
-    let width: usize = 400;
-    let height: usize = 300;
+fn main() {
+    let width: usize = 2560;
+    let height: usize = 1600;
     let rays_per_pixel: usize = 1000;
+    let n_threads: usize = 100;
+    let mut threads = vec![];
+    let n_pixels_per_thread = width * height / n_threads;
     let mut rng = rand::thread_rng();
-    let mut data: Vec<u8> = Vec::with_capacity(width * height * 4);
-    data.resize(width * height * 4, 0);
-    let camera = Camera::new(
+
+    let camera = Arc::new(Camera::new(
         Vec3(6.0, 1.2, 3.0),
-        // Vec3(0.0, 2.0, 0.5),
         Vec3(0.0, 0.5, 0.0),
         Vec3(0.0, 1.0, 0.0),
         25.0,
         width as f32 / height as f32,
         0.1,
         0.9,
-    );
+    ));
 
-    // let horizontal = Vec3(2.0 * width as f32 / height as f32, 0.0, 0.0);
-    // let vertical = Vec3(0.0, 2.0, 0.0);
-    // let camera = Camera {
-    //     origin: Vec3(0.0, 0.0, 0.0),
-    //     horizontal,
-    //     vertical,
-    //     lower_left: Vec3(0.0, 0.0, -1.0) - horizontal / 2.0 - vertical / 2.0,
-    // };
     println!("camera: {:?}", camera);
-    let world = build_world(&mut rng);
-    let mut progress = 0_u64;
-    let mut tick = 0_u64;
-    let max = width as u64 * height as u64;
-    for i in 0..height {
-        for j in 0..width {
-            let mut rgb = Vec3(0.0, 0.0, 0.0);
-            for _k in 0..rays_per_pixel {
-                let u = (j as f32 + rng.gen::<f32>()) / width as f32;
-                let v = 1.0 - (i as f32 + rng.gen::<f32>()) / height as f32;
-                let ray = camera.get_ray(u, v, &mut rng);
-                rgb += color(&world, &ray, &mut rng, 1);
-            }
-            rgb /= rays_per_pixel as f32;
-            tick += 1;
-            if tick > max / 20 {
-                tick = 0;
-                progress += 5;
-                println!("{}%", progress);
-                save_to_file("out_image.png", &data, width, height).unwrap();
-            }
+    let world = Arc::new(build_world(&mut rng));
+    for t_i in 0..n_threads {
+        let camera = camera.clone();
+        let world = world.clone();
+        let from = t_i * n_pixels_per_thread;
+        let to = from + n_pixels_per_thread;
+        threads.push(thread::spawn(move || {
+            let mut data: Vec<u8> = Vec::with_capacity(n_pixels_per_thread * 4);
+            data.resize(n_pixels_per_thread * 4, 0);
 
-            data[4 * (i * width + j)] = clamp_to_u8(rgb.r()) as u8;
-            data[4 * (i * width + j) + 1] = clamp_to_u8(rgb.g()) as u8;
-            data[4 * (i * width + j) + 2] = clamp_to_u8(rgb.b()) as u8;
-            data[4 * (i * width + j) + 3] = 255_u8;
-        }
+            let mut t_rng = rand::thread_rng();
+            for i in from..to {
+                let mut rgb = Vec3(0.0, 0.0, 0.0);
+                for _k in 0..rays_per_pixel {
+                    let u = ((i % width) as f32 + t_rng.gen::<f32>()) / width as f32;
+                    let v = 1.0 - ((i / width) as f32 + t_rng.gen::<f32>()) / height as f32;
+                    let ray = camera.get_ray(u, v, &mut t_rng);
+                    rgb += color(&world, &ray, &mut t_rng, 1);
+                }
+                rgb /= rays_per_pixel as f32;
+                data[4 * (i - from)] = clamp_to_u8(rgb.r()) as u8;
+                data[4 * (i - from) + 1] = clamp_to_u8(rgb.g()) as u8;
+                data[4 * (i - from) + 2] = clamp_to_u8(rgb.b()) as u8;
+                data[4 * (i - from) + 3] = 255_u8;
+            }
+            (from, to, data)
+        }));
     }
-    save_to_file("out_image.png", &data, width, height)
+    let mut aggregated_data = Vec::with_capacity(width * height * 4);
+    aggregated_data.resize(width * height * 4, 0);
+    for t in threads {
+        let (from, to, data) = t.join().unwrap();
+        for i in from..to {
+            aggregated_data[4 * i] = data[4 * (i - from)];
+            aggregated_data[4 * i + 1] = data[4 * (i - from) + 1];
+            aggregated_data[4 * i + 2] = data[4 * (i - from) + 2];
+            aggregated_data[4 * i + 3] = data[4 * (i - from) + 3];
+        }
+        save_to_file("out_image.png", &aggregated_data, width, height).unwrap();
+    }
+    // let d2 = t2.join().unwrap();
+    // save_to_file("out_image.png", &d2, width, height)
 }
 
 fn save_to_file(fname: &str, data: &Vec<u8>, width: usize, height: usize) -> std::io::Result<()> {
@@ -183,7 +189,6 @@ fn save_to_file(fname: &str, data: &Vec<u8>, width: usize, height: usize) -> std
     let file_writer = BufWriter::new(File::create(path)?);
     let mut encoder = mtpng::encoder::Encoder::new(file_writer, &options);
 
-    //file_data.write_image_data(&*data).unwrap(); // Save
     encoder.write_header(&header).unwrap();
     encoder.write_image_rows(&data).unwrap();
     encoder.finish().unwrap();

@@ -5,7 +5,7 @@ use crate::vec3::*;
 pub struct HitRecord<'a> {
     pub t: f32,
     pub normal: Vec3,
-    pub material: Option<&'a dyn Material>,
+    pub material: Option<&'a (dyn Material + Send + Sync)>,
 }
 
 impl HitRecord<'_> {
@@ -27,7 +27,7 @@ pub trait Hittable {
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
-    pub material: Box<dyn Material>,
+    pub material: Box<dyn Material + Send + Sync>,
 }
 
 impl Hittable for Sphere {
@@ -57,7 +57,7 @@ impl Hittable for Sphere {
 }
 
 pub struct HittableList {
-    list: Vec<Box<dyn Hittable>>,
+    list: Vec<Box<dyn Hittable + Send + Sync>>,
 }
 
 impl Hittable for HittableList {
@@ -80,7 +80,7 @@ impl HittableList {
         Self { list: Vec::new() }
     }
 
-    pub fn push<T: Hittable + 'static>(&mut self, h: T) -> () {
+    pub fn push<T: Hittable + 'static + Send + Sync>(&mut self, h: T) -> () {
         self.list.push(Box::new(h))
     }
 }
