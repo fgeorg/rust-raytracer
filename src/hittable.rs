@@ -3,7 +3,7 @@ use crate::ray::*;
 use crate::vec3::*;
 
 pub struct HitRecord<'a> {
-    pub t: f32,
+    pub t: f64,
     pub normal: Vec3,
     pub material: Option<&'a (dyn Material + Send + Sync)>,
 }
@@ -19,19 +19,19 @@ impl HitRecord<'_> {
 }
 
 pub trait Hittable {
-    fn hit(&self, _ray: &Ray, _t_min: f32, _t_max: f32) -> HitRecord {
+    fn hit(&self, _ray: &Ray, _t_min: f64, _t_max: f64) -> HitRecord {
         HitRecord::new_miss()
     }
 }
 
 pub struct Sphere {
     pub center: Vec3,
-    pub radius: f32,
+    pub radius: f64,
     pub material: Box<dyn Material + Send + Sync>,
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> HitRecord {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> HitRecord {
         let oc = ray.pos - self.center;
         let a = ray.dir.dot(ray.dir);
         let b = 2.0 * oc.dot(ray.dir);
@@ -61,7 +61,7 @@ pub struct HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> HitRecord {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> HitRecord {
         let mut closest = HitRecord::new_miss();
         for h in &self.list {
             let hit_record = h.hit(ray, t_min, t_max);
@@ -104,14 +104,14 @@ mod tests {
             pos: Vec3(0.0, 0.0, 0.0),
             dir: Vec3(0.0, 1.0, 0.0),
         };
-        assert_relative_eq!(s.hit(&r, 0.0, std::f32::MAX).t, -1.0); // misses
+        assert_relative_eq!(s.hit(&r, 0.0, std::f64::MAX).t, -1.0); // misses
         let r2 = Ray {
             pos: Vec3(0.0, 0.0, 0.0),
             dir: Vec3(0.0, 0.0, -1.0),
         };
-        assert_relative_eq!(s.hit(&r2, 0.0, std::f32::MAX).t, 0.5); // hits the sphere
-        assert_relative_eq!(s.hit(&r2, 0.0, std::f32::MAX).normal.length(), 1.0);
-        assert_relative_eq!(s.hit(&r2, 0.0, std::f32::MAX).normal.z(), 1.0);
+        assert_relative_eq!(s.hit(&r2, 0.0, std::f64::MAX).t, 0.5); // hits the sphere
+        assert_relative_eq!(s.hit(&r2, 0.0, std::f64::MAX).normal.length(), 1.0);
+        assert_relative_eq!(s.hit(&r2, 0.0, std::f64::MAX).normal.z(), 1.0);
     }
     #[test]
     fn list_can_add_stuff() {
@@ -134,7 +134,7 @@ mod tests {
         l.push(s);
         l2.push(s2);
         l.push(l2);
-        assert_relative_eq!(l.hit(&r, 0.0, std::f32::MAX).t, -1.0);
+        assert_relative_eq!(l.hit(&r, 0.0, std::f64::MAX).t, -1.0);
     }
 
     #[test]
@@ -144,24 +144,24 @@ mod tests {
             pos: Vec3(0.0, 0.0, 0.0),
             dir: Vec3(0.0, 0.0, -1.0),
         };
-        assert_relative_eq!(l.hit(&r, 0.0, std::f32::MAX).t, -1.0);
+        assert_relative_eq!(l.hit(&r, 0.0, std::f64::MAX).t, -1.0);
         l.push(Sphere {
             center: Vec3(0.0, 0.0, -1.0),
             radius: 0.5,
             material: Box::new(TestMaterial {}),
         });
-        assert_relative_eq!(l.hit(&r, 0.0, std::f32::MAX).t, 0.5);
+        assert_relative_eq!(l.hit(&r, 0.0, std::f64::MAX).t, 0.5);
         l.push(Sphere {
             center: Vec3(0.0, 0.0, -2.0),
             radius: 0.5,
             material: Box::new(TestMaterial {}),
         });
-        assert_relative_eq!(l.hit(&r, 0.0, std::f32::MAX).t, 0.5);
+        assert_relative_eq!(l.hit(&r, 0.0, std::f64::MAX).t, 0.5);
         l.push(Sphere {
             center: Vec3(0.0, 0.0, -0.9),
             radius: 0.5,
             material: Box::new(TestMaterial {}),
         });
-        assert_relative_eq!(l.hit(&r, 0.0, std::f32::MAX).t, 0.4);
+        assert_relative_eq!(l.hit(&r, 0.0, std::f64::MAX).t, 0.4);
     }
 }

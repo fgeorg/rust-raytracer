@@ -1,37 +1,37 @@
 use std::ops;
 
 #[derive(Debug, PartialEq, Copy)]
-pub struct Vec3(pub f32, pub f32, pub f32);
+pub struct Vec3(pub f64, pub f64, pub f64);
 
 impl Vec3 {
-    pub fn x(&self) -> f32 {
+    pub fn x(&self) -> f64 {
         self.0
     }
-    pub fn y(&self) -> f32 {
+    pub fn y(&self) -> f64 {
         self.1
     }
-    pub fn z(&self) -> f32 {
+    pub fn z(&self) -> f64 {
         self.2
     }
-    pub fn r(&self) -> f32 {
+    pub fn r(&self) -> f64 {
         self.0
     }
-    pub fn g(&self) -> f32 {
+    pub fn g(&self) -> f64 {
         self.1
     }
-    pub fn b(&self) -> f32 {
+    pub fn b(&self) -> f64 {
         self.2
     }
-    pub fn length(&self) -> f32 {
+    pub fn length(&self) -> f64 {
         (self.0 * self.0 + self.1 * self.1 + self.2 * self.2).sqrt()
     }
-    pub fn squared_length(&self) -> f32 {
+    pub fn squared_length(&self) -> f64 {
         self.0 * self.0 + self.1 * self.1 + self.2 * self.2
     }
     pub fn normalized(&self) -> (Vec3) {
         *self / self.length()
     }
-    pub fn dot(&self, rhs: Vec3) -> f32 {
+    pub fn dot(&self, rhs: Vec3) -> f64 {
         self.0 * rhs.0 + self.1 * rhs.1 + self.2 * rhs.2
     }
     pub fn cross(&self, rhs: Vec3) -> Vec3 {
@@ -93,14 +93,14 @@ impl ops::Mul<Vec3> for Vec3 {
     }
 }
 
-impl ops::Mul<f32> for Vec3 {
+impl ops::Mul<f64> for Vec3 {
     type Output = Vec3;
-    fn mul(self, rhs: f32) -> Vec3 {
+    fn mul(self, rhs: f64) -> Vec3 {
         Vec3(self.0 * rhs, self.1 * rhs, self.2 * rhs)
     }
 }
 
-impl ops::Mul<Vec3> for f32 {
+impl ops::Mul<Vec3> for f64 {
     type Output = Vec3;
     fn mul(self, rhs: Vec3) -> Vec3 {
         Vec3(self * rhs.0, self * rhs.1, self * rhs.2)
@@ -114,9 +114,9 @@ impl ops::Div<Vec3> for Vec3 {
     }
 }
 
-impl ops::Div<f32> for Vec3 {
+impl ops::Div<f64> for Vec3 {
     type Output = Vec3;
-    fn div(self, rhs: f32) -> Vec3 {
+    fn div(self, rhs: f64) -> Vec3 {
         Vec3(self.0 / rhs, self.1 / rhs, self.2 / rhs)
     }
 }
@@ -129,8 +129,8 @@ impl ops::MulAssign<Vec3> for Vec3 {
     }
 }
 
-impl ops::MulAssign<f32> for Vec3 {
-    fn mul_assign(&mut self, rhs: f32) -> () {
+impl ops::MulAssign<f64> for Vec3 {
+    fn mul_assign(&mut self, rhs: f64) -> () {
         self.0 *= rhs;
         self.1 *= rhs;
         self.2 *= rhs;
@@ -145,8 +145,8 @@ impl ops::DivAssign<Vec3> for Vec3 {
     }
 }
 
-impl ops::DivAssign<f32> for Vec3 {
-    fn div_assign(&mut self, rhs: f32) -> () {
+impl ops::DivAssign<f64> for Vec3 {
+    fn div_assign(&mut self, rhs: f64) -> () {
         self.0 /= rhs;
         self.1 /= rhs;
         self.2 /= rhs;
